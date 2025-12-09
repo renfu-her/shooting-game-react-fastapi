@@ -1,5 +1,50 @@
 # 變更記錄 (Change Log)
 
+## 2025-12-09 17:00:00
+
+### 修復前端環境變數配置
+
+修復前端代碼，使其正確使用環境變數而不是硬編碼值。
+
+#### 更新的檔案
+
+- `frontend/services/apiService.ts`:
+  - 修改 `API_BASE_URL` 和 `DEFAULT_API_TOKEN` 從硬編碼改為使用 `import.meta.env.VITE_API_BASE_URL` 和 `import.meta.env.VITE_API_TOKEN`
+  - 如果環境變數未設定，則使用預設值作為 fallback
+
+- `frontend/vite-env.d.ts` (新建):
+  - 創建 TypeScript 類型定義文件
+  - 定義 `ImportMetaEnv` 接口，包含 `VITE_API_BASE_URL`、`VITE_API_TOKEN` 和 `GEMINI_API_KEY`
+  - 修復 TypeScript 類型錯誤
+
+- `frontend/tsconfig.json`:
+  - 添加 `"vite/client"` 到 types 數組
+  - 添加 `include` 配置，確保 `vite-env.d.ts` 被包含
+
+#### 改進內容
+
+- **環境變數支援**：前端現在可以通過 `.env.local` 文件配置 API 基礎 URL 和 Token
+- **類型安全**：添加 TypeScript 類型定義，確保環境變數的正確使用
+- **向後兼容**：如果環境變數未設定，仍使用預設值，確保應用正常運行
+
+#### 環境變數配置
+
+前端 `.env.local` 文件應包含：
+
+```env
+# Gemini API Key (用於 AI 教練評論功能)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# 後端 API 設定（可選，有預設值）
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_TOKEN=shooting-game-api-token-2024
+```
+
+**注意**：
+- 環境變數必須以 `VITE_` 開頭才能在 Vite 項目中使用
+- 如果不設定 `VITE_API_BASE_URL` 和 `VITE_API_TOKEN`，將使用預設值
+- `VITE_API_TOKEN` 應與後端 `.env` 中的 `API_TOKEN` 一致
+
 ## 2025-12-09 16:25:00
 
 ### 後端添加 Gunicorn 支援
