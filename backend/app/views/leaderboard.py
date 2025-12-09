@@ -1,14 +1,18 @@
 """Leaderboard API endpoints."""
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from app.controllers.leaderboard_controller import LeaderboardController
 from app.models.leaderboard import LeaderboardEntry, AddScoreRequest, LeaderboardResponse
+from app.utils.auth_dependency import get_current_user
 from typing import List
 
 router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 
 
 @router.get("", response_model=LeaderboardResponse)
-async def get_leaderboard(limit: int = Query(10, ge=1, le=100)):
+async def get_leaderboard(
+    limit: int = Query(10, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
+):
     """Get top leaderboard entries.
     
     Args:
@@ -25,7 +29,10 @@ async def get_leaderboard(limit: int = Query(10, ge=1, le=100)):
 
 
 @router.post("", response_model=LeaderboardEntry, status_code=201)
-async def add_score(request: AddScoreRequest):
+async def add_score(
+    request: AddScoreRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """Add a new score to the leaderboard.
     
     Args:

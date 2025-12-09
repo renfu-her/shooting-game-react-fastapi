@@ -32,7 +32,28 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables."""
+    """Initialize database tables and create default user if needed."""
+    from app.services.user_service import UserService
+    from app.config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    # Create tables
     Base.metadata.create_all(bind=engine)
+    
+    # Create default admin user if not exists
+    db = SessionLocal()
+    try:
+        if not UserService.user_exists(db, DEFAULT_ADMIN_EMAIL):
+            logger.info(f"Creating default admin user: {DEFAULT_ADMIN_EMAIL}")
+            UserService.create_user(db, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD)
+            logger.info("Default admin user created successfully!")
+        else:
+            logger.info("Default admin user already exists.")
+    except Exception as e:
+        logger.warning(f"Failed to create default user: {str(e)}")
+    finally:
+        db.close()
 
 

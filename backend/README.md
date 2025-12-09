@@ -1,6 +1,6 @@
 # Shooting Game Backend
 
-FastAPI backend for the shooting game with Firebase integration.
+FastAPI backend for the shooting game.
 
 ## 專案架構
 
@@ -9,13 +9,12 @@ FastAPI backend for the shooting game with Firebase integration.
 - **Models**: 資料模型定義（Pydantic）
 - **Views**: API 端點（FastAPI routes）
 - **Controllers**: 業務邏輯層
-- **Services**: Firebase 服務整合層
+- **Services**: 資料庫服務整合層
 - **Utils**: 工具函數
 
 ## 功能
 
 - ✅ 排行榜 API（MySQL）
-- ✅ Firebase Authentication 整合
 - ✅ CORS 支援
 
 ## 環境設定
@@ -45,16 +44,7 @@ uv sync
    uv run python init_db.py
    ```
 
-### 3. Firebase 設定（僅用於 Authentication）
-
-1. 在 [Firebase Console](https://console.firebase.google.com/) 建立專案
-2. 啟用 **Authentication** 服務
-3. 下載服務帳號金鑰：
-   - 前往「專案設定」>「服務帳號」
-   - 點擊「產生新的私密金鑰」
-   - 將下載的 JSON 檔案重新命名為 `firebase-credentials.json` 並放在 `backend/` 目錄
-
-### 4. 環境變數
+### 3. 環境變數
 
 複製 `.env.example` 為 `.env` 並填入設定：
 
@@ -71,10 +61,6 @@ MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=
 MYSQL_DATABASE=shooting-game
-
-# Firebase Configuration (for Authentication only)
-FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
-FIREBASE_PROJECT_ID=your-project-id
 
 # CORS Configuration
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
@@ -105,11 +91,6 @@ API 文件可在以下位置查看：
 - `GET /api/leaderboard?limit=10` - 取得排行榜
 - `POST /api/leaderboard` - 新增分數記錄
 
-### 認證
-
-- `POST /api/auth/verify` - 驗證 Firebase ID token
-- `GET /api/auth/user/{uid}` - 取得使用者資訊
-
 ## 專案結構
 
 ```
@@ -119,16 +100,12 @@ backend/
 │   ├── main.py                 # FastAPI 應用程式入口
 │   ├── config.py               # 配置管理
 │   ├── models/                 # 資料模型
-│   │   ├── leaderboard.py
-│   │   └── user.py
+│   │   └── leaderboard.py
 │   ├── views/                  # API 端點
-│   │   ├── leaderboard.py
-│   │   └── auth.py
+│   │   └── leaderboard.py
 │   ├── controllers/            # 業務邏輯層
-│   │   ├── leaderboard_controller.py
-│   │   └── auth_controller.py
+│   │   └── leaderboard_controller.py
 │   ├── services/               # 服務層
-│   │   ├── auth_service.py       # Firebase Authentication
 │   │   └── database_service.py  # MySQL Database
 │   ├── database.py              # 資料庫連接配置
 │   └── models/
@@ -140,7 +117,6 @@ backend/
 
 ## 注意事項
 
-- ⚠️ **絕對不要**將 `firebase-credentials.json` 提交到版本控制系統
 - 確保 MySQL 資料庫已建立並可連接
 - 預設 MySQL 配置：username: `root`, password: (空), database: `shooting-game`
 - 資料表會在應用程式啟動時自動建立
@@ -151,6 +127,5 @@ backend/
 - **uvicorn**: ASGI 伺服器
 - **SQLAlchemy**: ORM 框架
 - **PyMySQL**: MySQL 驅動程式
-- **firebase-admin**: Firebase Admin SDK (僅用於 Authentication)
 - **uv**: Python 套件管理器
 

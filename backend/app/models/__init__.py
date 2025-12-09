@@ -1,5 +1,5 @@
 from .leaderboard import LeaderboardEntry
-from .user import User
+from .user import LoginRequest, TokenResponse, UserInfo
 
-__all__ = ["LeaderboardEntry", "User"]
+__all__ = ["LeaderboardEntry", "LoginRequest", "TokenResponse", "UserInfo"]
 

@@ -1,106 +1,80 @@
-"""Firebase Authentication service."""
-import firebase_admin
-from firebase_admin import credentials, auth
-from pathlib import Path
-import os
-from app.config import FIREBASE_CREDENTIALS_PATH, FIREBASE_PROJECT_ID
-from typing import Dict, Any, Optional
+"""Authentication service for JWT token generation and validation."""
+from datetime import datetime, timedelta
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from app.config import (
+    JWT_SECRET_KEY,
+    JWT_ALGORITHM,
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+)
 
-# Initialize Firebase Admin SDK
-_firebase_app = None
-
-
-def _initialize_firebase():
-    """Initialize Firebase Admin SDK."""
-    global _firebase_app
-    
-    if _firebase_app is None:
-        cred_path = Path(FIREBASE_CREDENTIALS_PATH)
-        
-        if not cred_path.exists():
-            raise FileNotFoundError(
-                f"Firebase credentials file not found at {FIREBASE_CREDENTIALS_PATH}. "
-                "Please set FIREBASE_CREDENTIALS_PATH environment variable or place "
-                "firebase-credentials.json in the backend directory."
-            )
-        
-        cred = credentials.Certificate(str(cred_path))
-        _firebase_app = firebase_admin.initialize_app(
-            cred,
-            {
-                "projectId": FIREBASE_PROJECT_ID or cred.project_id
-            }
-        )
-    
-    return _firebase_app
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
-    """Service for Firebase Authentication operations."""
+    """Service for authentication operations."""
     
     @staticmethod
-    def verify_token(id_token: str) -> Dict[str, Any]:
-        """Verify Firebase ID token and return decoded token.
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against a hash.
         
         Args:
-            id_token: Firebase ID token string
+            plain_password: Plain text password
+            hashed_password: Hashed password
             
         Returns:
-            Decoded token containing user information
-            
-        Raises:
-            ValueError: If token is invalid
+            True if password matches, False otherwise
         """
-        try:
-            _initialize_firebase()  # Ensure Firebase is initialized
-            decoded_token = auth.verify_id_token(id_token)
-            return decoded_token
-        except auth.InvalidIdTokenError:
-            raise ValueError("Invalid ID token")
-        except auth.ExpiredIdTokenError:
-            raise ValueError("Expired ID token")
-        except Exception as e:
-            raise ValueError(f"Token verification failed: {str(e)}")
+        return pwd_context.verify(plain_password, hashed_password)
     
     @staticmethod
-    def get_user(uid: str) -> Optional[Dict[str, Any]]:
-        """Get user information by UID.
+    def get_password_hash(password: str) -> str:
+        """Hash a password.
         
         Args:
-            uid: User ID
+            password: Plain text password
             
         Returns:
-            User record or None if not found
+            Hashed password
+        """
+        return pwd_context.hash(password)
+    
+    @staticmethod
+    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """Create a JWT access token.
+        
+        Args:
+            data: Data to encode in the token
+            expires_delta: Optional expiration time delta
+            
+        Returns:
+            Encoded JWT token
+        """
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+        return encoded_jwt
+    
+    @staticmethod
+    def verify_token(token: str) -> Optional[dict]:
+        """Verify and decode a JWT token.
+        
+        Args:
+            token: JWT token string
+            
+        Returns:
+            Decoded token data or None if invalid
         """
         try:
-            _initialize_firebase()  # Ensure Firebase is initialized
-            user_record = auth.get_user(uid)
-            return {
-                "uid": user_record.uid,
-                "email": user_record.email,
-                "display_name": user_record.display_name,
-                "photo_url": user_record.photo_url,
-                "email_verified": user_record.email_verified,
-            }
-        except auth.UserNotFoundError:
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            return payload
+        except JWTError:
             return None
-        except Exception as e:
-            raise Exception(f"Error getting user: {str(e)}")
-    
-    @staticmethod
-    def create_custom_token(uid: str, additional_claims: Optional[Dict[str, Any]] = None) -> str:
-        """Create a custom token for a user.
-        
-        Args:
-            uid: User ID
-            additional_claims: Additional custom claims
-            
-        Returns:
-            Custom token string
-        """
-        try:
-            _initialize_firebase()  # Ensure Firebase is initialized
-            return auth.create_custom_token(uid, additional_claims).decode('utf-8')
-        except Exception as e:
-            raise Exception(f"Error creating custom token: {str(e)}")
 

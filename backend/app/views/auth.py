@@ -1,47 +1,72 @@
 """Authentication API endpoints."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from sqlalchemy.orm import Session
 from app.controllers.auth_controller import AuthController
-from app.models.user import TokenVerifyRequest, TokenVerifyResponse, User
+from app.models.user import LoginRequest, TokenResponse
+from app.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/verify", response_model=TokenVerifyResponse)
-async def verify_token(request: TokenVerifyRequest):
-    """Verify Firebase ID token.
+@router.post("/login", response_model=TokenResponse)
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
+    """Login endpoint to authenticate user and get access token.
     
     Args:
-        request: TokenVerifyRequest containing id_token
+        request: LoginRequest containing email and password
+        db: Database session
         
     Returns:
-        TokenVerifyResponse with validation result and user info
+        TokenResponse with access token and user info
     """
     try:
-        response = AuthController.verify_token(request)
-        if not response.valid:
-            raise HTTPException(status_code=401, detail=response.error or "Invalid token")
+        response = AuthController.login(db, request)
         return response
-    except HTTPException:
-        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login error: {str(e)}"
+        )
 
 
-@router.get("/user/{uid}", response_model=User)
-async def get_user(uid: str):
-    """Get user information by UID.
+@router.get("/user", response_model=dict)
+async def get_current_user_info(
+    token: str = Query(None, description="JWT token to verify"),
+    db: Session = Depends(get_db)
+):
+    """Get current authenticated user information.
+    
+    This endpoint does not require authentication and can optionally verify a token.
     
     Args:
-        uid: User ID
+        token: Optional JWT token to verify (query parameter)
+        db: Database session
         
     Returns:
-        User object
+        User information dictionary or error message
     """
+    if not token:
+        return {"message": "No token provided"}
+    
     try:
-        user = AuthController.get_user_info(uid)
-        return user
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        from app.services.auth_service import AuthService
+        payload = AuthService.verify_token(token)
+        if payload is None:
+            return {"error": "Invalid or expired token"}
+        
+        email: str = payload.get("sub")
+        if email is None:
+            return {"error": "Token missing user information"}
+        
+        return {
+            "email": email,
+            "is_authenticated": True
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": f"Token verification failed: {str(e)}"}
 

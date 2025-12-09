@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(
     title="Shooting Game API",
-    description="FastAPI backend for shooting game with Firebase integration",
+    description="FastAPI backend for shooting game",
     version="1.0.0"
 )
 
@@ -36,8 +36,8 @@ except Exception as e:
 
 
 # Register routers
-app.include_router(leaderboard.router, prefix=API_PREFIX)
 app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(leaderboard.router, prefix=API_PREFIX)
 
 
 @app.get("/")

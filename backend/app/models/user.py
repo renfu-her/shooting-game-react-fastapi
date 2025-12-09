@@ -1,25 +1,26 @@
-"""User data models."""
+"""User authentication models."""
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 
-class User(BaseModel):
-    """User model."""
-    uid: str
-    email: Optional[EmailStr] = None
-    display_name: Optional[str] = None
-    photo_url: Optional[str] = None
-    email_verified: bool = False
+class LoginRequest(BaseModel):
+    """Login request model."""
+    email: EmailStr
+    password: str
 
 
-class TokenVerifyRequest(BaseModel):
-    """Request model for token verification."""
-    id_token: str
+class TokenResponse(BaseModel):
+    """Token response model."""
+    access_token: str
+    token_type: str = "bearer"
+    user: Optional["UserInfo"] = None
 
 
-class TokenVerifyResponse(BaseModel):
-    """Response model for token verification."""
-    valid: bool
-    user: Optional[User] = None
-    error: Optional[str] = None
+class UserInfo(BaseModel):
+    """User information model."""
+    email: str
+    is_authenticated: bool = True
+
+
+TokenResponse.model_rebuild()
 
