@@ -1,5 +1,52 @@
 # 變更記錄 (Change Log)
 
+## 2025-12-09 16:20:00
+
+### 修復遊戲結束時分數為 0 和重複寫入的問題
+
+修復遊戲結束時 SCORE 和 COMBO 顯示為 0，以及會一次寫入兩筆資料的問題。
+
+#### 更新的檔案
+
+- `frontend/App.tsx`:
+  - 添加 `gameOverHandledRef` 來防止 `handleGameOver` 被重複調用
+  - 在 `handleGameOver` 中先捕獲當前的 `score` 和 `maxCombo` 值，避免狀態更新導致值丟失
+  - 在 `startGame` 中重置 `gameOverHandledRef`，確保新遊戲可以正常結束
+  - 在 timer effect 中重置 `gameOverHandledRef`，並在調用 `handleGameOver` 前先清理 timer
+  - 在 `saveScoreToLeaderboard` 中添加檢查，如果分數和 combo 都是 0，則跳過保存
+  - 添加詳細的 console.log 來追蹤分數保存流程
+
+#### 問題修復
+
+- **分數為 0 的問題**：現在在改變遊戲狀態前先捕獲分數值，確保正確保存
+- **重複寫入的問題**：使用 `gameOverHandledRef` 確保 `handleGameOver` 只被調用一次
+- **空分數保存**：如果分數和 combo 都是 0，不會保存到排行榜
+
+#### 改進內容
+
+- **狀態管理**：改進狀態更新時序，確保分數值在狀態改變前被正確捕獲
+- **防重複調用**：使用 ref 來追蹤是否已經處理過遊戲結束，防止重複保存
+- **更好的調試**：添加詳細的日誌，方便追蹤問題
+
+## 2025-12-09 16:15:00
+
+### 在遊戲結束畫面添加返回主選單按鈕
+
+在遊戲結束畫面添加"Back to Menu"按鈕，讓玩家可以方便地返回主選單。
+
+#### 更新的檔案
+
+- `frontend/App.tsx`:
+  - 在遊戲結束畫面（GAME_OVER）的按鈕區域添加"Back to Menu"按鈕
+  - 將按鈕區域改為 flex-col 布局，支持多個按鈕垂直排列
+  - "Back to Menu"按鈕使用 `setGameState(GameState.MENU)` 返回主選單
+  - 保持"Play Again"按鈕的功能不變
+
+#### 改進內容
+
+- **更好的導航**：玩家現在可以選擇直接返回主選單，而不需要先開始新遊戲
+- **用戶體驗**：提供更多選項，讓玩家可以更方便地導航應用
+
 ## 2025-12-09 16:10:00
 
 ### 修復前端 API 認證 401 錯誤

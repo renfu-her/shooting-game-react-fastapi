@@ -31,6 +31,13 @@ const App: React.FC = () => {
 
   // Use 'number' for browser environments, generally safe cast for setInterval ID
   const timerRef = useRef<number | null>(null);
+  
+  // Prevent duplicate game over handling
+  const gameOverHandledRef = useRef<boolean>(false);
+  
+  // Use refs to track current score and maxCombo to avoid stale closure issues
+  const scoreRef = useRef<number>(0);
+  const maxComboRef = useRef<number>(0);
 
   // Load leaderboard function
   const loadLeaderboard = async () => {
@@ -73,9 +80,16 @@ const App: React.FC = () => {
   const saveScoreToLeaderboard = async (finalScore: number, finalMaxCombo: number) => {
     const finalName = playerName.trim() || "Anonymous";
     
+    console.log("saveScoreToLeaderboard called with:", { finalName, finalScore, finalMaxCombo });
+    
+    // Always save the score, even if it's 0 (it's a valid game result)
+    // The user played the game, so we should record it
+    
     try {
       // Save to backend
+      console.log("Calling addScoreToLeaderboard with:", { finalName, finalScore, finalMaxCombo });
       const newEntry = await addScoreToLeaderboard(finalName, finalScore, finalMaxCombo);
+      console.log("Score saved successfully:", newEntry);
       setLastEntryTimestamp(newEntry.timestamp || Date.now());
       
       // Reload leaderboard from backend
@@ -124,6 +138,11 @@ const App: React.FC = () => {
     localStorage.setItem(PLAYER_NAME_KEY, playerName.trim());
     setIsNameError(false);
 
+    // Reset game over flag and score refs
+    gameOverHandledRef.current = false;
+    scoreRef.current = 0;
+    maxComboRef.current = 0;
+    
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
@@ -148,16 +167,47 @@ const App: React.FC = () => {
   };
 
   const handleGameOver = async () => {
+    // Prevent duplicate calls
+    if (gameOverHandledRef.current) {
+      console.log("handleGameOver already called, skipping...");
+      return;
+    }
+    gameOverHandledRef.current = true;
+    
+    // Clear timer first
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    // Use refs to get the latest values (avoid stale closure)
+    // Also check state as fallback
+    const finalScore = scoreRef.current || score;
+    const finalMaxCombo = maxComboRef.current || maxCombo;
+    
+    console.log("Game Over - Saving score:", { 
+      finalScore, 
+      finalMaxCombo, 
+      scoreRef: scoreRef.current,
+      maxComboRef: maxComboRef.current,
+      scoreState: score,
+      maxComboState: maxCombo
+    });
+    
+    // Change game state
     setGameState(GameState.GAME_OVER);
-    if (timerRef.current) clearInterval(timerRef.current);
 
-    // Save Score (async)
-    await saveScoreToLeaderboard(score, maxCombo);
+    // Save Score (async) - use ref values which are always up-to-date
+    try {
+      await saveScoreToLeaderboard(finalScore, finalMaxCombo);
+    } catch (error) {
+      console.error("Error saving score:", error);
+    }
 
     setLoadingCommentary(true);
     const stats: GameStats = {
-      score,
-      maxCombo,
+      score: finalScore,
+      maxCombo: finalMaxCombo,
       accuracy: 1.0, // Simplified for now
       shotsTaken: shotsMade // Approximation
     };
@@ -167,13 +217,20 @@ const App: React.FC = () => {
   };
 
   const handleScoreUpdate = (points: number, isCombo: boolean) => {
-    setScore(prev => prev + points);
+    setScore(prev => {
+      const newScore = prev + points;
+      scoreRef.current = newScore; // Update ref
+      return newScore;
+    });
     setShotsMade(prev => prev + 1);
     
     if (isCombo) {
       setCombo(prev => {
         const newCombo = prev + 1;
-        if (newCombo > maxCombo) setMaxCombo(newCombo);
+        if (newCombo > maxComboRef.current) {
+          maxComboRef.current = newCombo;
+          setMaxCombo(newCombo);
+        }
         return newCombo;
       });
     } else {
@@ -187,9 +244,17 @@ const App: React.FC = () => {
       // Clear any existing timer
       if (timerRef.current) clearInterval(timerRef.current);
       
+      // Reset game over flag when starting a new game
+      gameOverHandledRef.current = false;
+      
       timerRef.current = window.setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
+            // Clear timer before calling handleGameOver
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
             handleGameOver();
             return 0;
           }
@@ -198,7 +263,10 @@ const App: React.FC = () => {
       }, 1000);
     }
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [gameState]);
 
@@ -415,12 +483,18 @@ const App: React.FC = () => {
               {renderLeaderboardList()}
             </div>
 
-            <div className="flex-none sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-black via-black to-transparent w-full flex justify-center">
+            <div className="flex-none sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-black via-black to-transparent w-full flex flex-col gap-3 items-center">
               <button 
                 onClick={startGame}
-                className="px-10 py-4 bg-white hover:bg-slate-200 text-slate-900 font-black text-xl uppercase tracking-wide rounded-full transition-transform hover:scale-105 active:scale-95 shadow-lg"
+                className="px-10 py-4 bg-white hover:bg-slate-200 text-slate-900 font-black text-xl uppercase tracking-wide rounded-full transition-transform hover:scale-105 active:scale-95 shadow-lg w-full max-w-xs"
               >
                 Play Again
+              </button>
+              <button 
+                onClick={() => setGameState(GameState.MENU)}
+                className="px-10 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-lg uppercase tracking-wider rounded-full border border-slate-600 transition-colors w-full max-w-xs"
+              >
+                Back to Menu
               </button>
             </div>
           </div>
