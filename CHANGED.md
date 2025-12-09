@@ -1,5 +1,242 @@
 # 變更記錄 (Change Log)
 
+## 2025-12-09 15:35:29
+
+### 改進 Swagger UI 中 token 欄位的顯示和說明
+
+改進 Swagger UI 中 token 欄位的顯示，明確說明 token 應從 GET /api/auth/token 獲取，並添加範例值。
+
+#### 更新的檔案
+
+- `backend/app/main.py`:
+  - 在 `custom_openapi()` 中從 `API_TOKEN` 讀取實際 token 值
+  - 在 security scheme 的 description 中添加範例 token 值
+  - 為所有有 token 參數的端點添加 `example` 和更詳細的 `description`
+  - 說明文字明確指向 `GET /api/auth/token` 端點
+
+- `backend/app/views/leaderboard.py`:
+  - 在 `Security()` 參數中添加 `description`，說明如何獲取 token
+  - 更新 docstring，明確說明 token 從 `GET /api/auth/token` 獲取
+
+- `backend/app/utils/auth_dependency.py`:
+  - 更新 `APIKeyHeader` 的 description，明確指向 `GET /api/auth/token`
+
+#### 改進內容
+
+1. **Swagger UI 顯示**：
+   - Token 欄位現在會顯示範例值（從 `.env` 中的 `API_TOKEN` 讀取）
+   - 描述文字明確說明從 `GET /api/auth/token` 獲取 token
+   - 參數描述中包含當前 token 值作為參考
+
+2. **使用流程**：
+   - 用戶可以先調用 `GET /api/auth/token` 獲取 token
+   - 然後在 Swagger UI 的 Authorize 按鈕中輸入該 token
+   - 或者在每個 API 請求的 Parameters 區塊中直接輸入 token
+
+3. **範例值**：
+   - OpenAPI schema 中會自動包含當前配置的 token 值作為範例
+   - 方便用戶直接複製使用
+
+#### 技術細節
+
+- 在 `custom_openapi()` 中動態讀取 `API_TOKEN` 並添加到 schema
+- 為每個 token 參數添加 `example` 屬性
+- 更新所有相關的描述文字，統一指向 `GET /api/auth/token` 端點
+
+## 2025-12-09 15:30:08
+
+### 修復 Swagger UI 中 token 欄位不顯示的問題
+
+修復 Swagger UI 中 token 認證欄位不顯示的問題，現在可以在 Swagger UI 中直接輸入 token 進行測試。
+
+#### 更新的檔案
+
+- `backend/app/main.py`:
+  - 添加 `custom_openapi()` 函數來配置 OpenAPI schema
+  - 添加 security scheme 配置，定義 "token" 作為 API Key header
+  - 讓 Swagger UI 可以顯示 token 輸入欄位
+
+- `backend/app/utils/auth_dependency.py`:
+  - 更新 `APIKeyHeader` 添加描述，說明如何獲取 token
+  - 修改 `verify_token()` 返回 `str` 而不是 `bool`，以便與 `Security()` 正確配合
+
+- `backend/app/views/leaderboard.py`:
+  - 改用 `Security(verify_token)` 替代 `Depends(verify_token)`
+  - 這樣 Swagger UI 會自動顯示 token 輸入欄位
+  - 簡化參數，移除重複的 token 參數
+
+#### 改進內容
+
+1. **Swagger UI 顯示**：
+   - 現在所有需要認證的端點都會顯示 "token" 欄位
+   - 用戶可以直接在 Swagger UI 中輸入 token 進行測試
+   - Token 欄位有清楚的說明文字
+
+2. **Security Scheme 配置**：
+   - 在 OpenAPI schema 中定義了 "token" security scheme
+   - 類型為 `apiKey`，位置在 `header`
+   - 包含說明文字，引導用戶到 `/api/auth/token` 獲取 token
+
+3. **使用方式**：
+   - 在 Swagger UI 中，點擊右上角的鎖圖標
+   - 輸入 token 值（從 `.env` 中的 `API_TOKEN` 或 `/api/auth/token` 端點獲取）
+   - 所有需要認證的 API 會自動使用此 token
+
+#### 技術細節
+
+- 使用 `Security()` 而不是 `Depends()` 可以讓 FastAPI 自動在 OpenAPI schema 中標記為需要認證
+- `custom_openapi()` 函數允許我們自定義 OpenAPI schema，添加 security scheme
+- `APIKeyHeader` 的 `description` 參數會在 Swagger UI 中顯示為提示文字
+
+## 2025-12-09 15:27:12
+
+### 修改認證方式為使用 token header（從 .env 讀取）
+
+將認證方式從 Bearer Token 改為使用 "token" header，token 從 .env 檔案讀取。
+
+#### 更新的檔案
+
+- `backend/app/utils/auth_dependency.py`:
+  - 改用 `APIKeyHeader` 替代 `HTTPBearer`
+  - Header 名稱改為 "token"（而不是 "Authorization"）
+  - 簡化認證邏輯，直接從 "token" header 讀取
+
+- `frontend/services/apiService.ts`:
+  - 修改 `getAuthHeaders()` 函數
+  - 改用 `'token': API_TOKEN` 替代 `'Authorization': 'Bearer ${API_TOKEN}'`
+  - 所有 API 請求現在使用 "token" header
+
+- `backend/app/views/auth.py`:
+  - 更新 `/api/auth/token` 端點的訊息，說明使用 "token" header
+
+#### 變更說明
+
+1. **認證方式**：
+   - 之前：`Authorization: Bearer {token}`
+   - 現在：`token: {token}`
+
+2. **Token 來源**：
+   - Token 從 `.env` 檔案中的 `API_TOKEN` 讀取
+   - 後端：`backend/.env` 中的 `API_TOKEN`
+   - 前端：使用預設值或從環境變數讀取
+
+3. **Swagger UI**：
+   - 現在會顯示 "token" 欄位（而不是 "authorization"）
+   - 可以直接在 Swagger UI 中輸入 token 進行測試
+
+#### 使用方式
+
+**後端設定**（`.env`）：
+```env
+API_TOKEN=your-token-here
+```
+
+**前端使用**：
+```typescript
+headers: {
+  'token': 'your-token-here',
+  'Content-Type': 'application/json'
+}
+```
+
+**Swagger UI**：
+- 在 "token" 欄位中輸入 token 值
+- 所有需要認證的 API 會自動使用此 token
+
+## 2025-12-09 15:15:00
+
+### 修復 POST /api/leaderboard 的 Token 驗證問題
+
+修復並改進 API token 驗證機制，確保 POST 請求正確傳遞和驗證 token。
+
+#### 更新的檔案
+
+- `frontend/services/apiService.ts`:
+  - 在 `addScoreToLeaderboard()` 中添加調試日誌
+  - 改進錯誤處理，顯示更詳細的錯誤訊息
+  - 確認 token 是否正確包含在請求 headers 中
+
+- `backend/app/utils/auth_dependency.py`:
+  - 改進 `verify_token()` 依賴函數
+  - 添加 fallback 機制，支援從 `HTTPBearer` 或直接從 `Authorization` header 讀取 token
+  - 添加更清楚的錯誤訊息（當 token 缺失時）
+  - 添加日誌記錄，方便調試 token 驗證問題
+  - 設置 `HTTPBearer(auto_error=False)` 以允許手動處理錯誤
+
+#### 改進內容
+
+1. **Token 讀取機制**：
+   - 優先從 `HTTPBearer` 讀取 token
+   - 如果沒有，則從 `Authorization` header 手動解析
+   - 支援 `Bearer {token}` 格式
+
+2. **錯誤處理**：
+   - 當 token 缺失時，返回清楚的錯誤訊息
+   - 當 token 無效時，記錄警告日誌
+   - 前端顯示更詳細的錯誤訊息
+
+3. **調試支援**：
+   - 前端添加 console.log 顯示請求 headers（開發環境）
+   - 後端添加日誌記錄 token 驗證過程
+
+#### 技術細節
+
+- 使用 `HTTPBearer(auto_error=False)` 允許手動處理認證錯誤
+- 添加 `authorization: Optional[str] = Header(None)` 作為 fallback
+- 改進錯誤訊息，幫助開發者快速定位問題
+
+## 2025-12-09 15:06:55
+
+### 更新 README.md 使其更清楚完整
+
+重寫 README.md，使其更清楚、更完整地說明專案設定和使用方式。
+
+#### 更新內容
+
+1. **更清楚的結構**：
+   - 重新組織章節順序
+   - 添加詳細的步驟說明
+   - 使用表格整理環境變數
+
+2. **完整的 API 文件**：
+   - 詳細說明每個 API 端點
+   - 提供請求/回應範例
+   - 說明認證方式和使用方法
+
+3. **環境變數總覽**：
+   - 後端環境變數表格
+   - 前端環境變數表格
+   - 說明每個變數的用途和預設值
+
+4. **資料流程說明**：
+   - 前端到後端的資料流程
+   - 排行榜載入流程
+
+5. **常見問題 (FAQ)**：
+   - 資料庫連接問題
+   - API 連接問題
+   - 認證問題
+   - Token 設定問題
+
+6. **開發流程**：
+   - 完整的啟動流程
+   - 開發建議
+   - 測試方法
+
+7. **安全性注意事項**：
+   - 開發環境 vs 生產環境
+   - Token 安全建議
+   - CORS 設定建議
+
+#### 改進重點
+
+- ✅ 更清楚的安裝步驟
+- ✅ 完整的 API 文件
+- ✅ 環境變數總覽表格
+- ✅ 常見問題解答
+- ✅ 資料流程圖解
+- ✅ 安全性建議
+
 ## 2025-12-09 14:44:37
 
 ### 簡化認證系統為固定 Token 並整合前端 API

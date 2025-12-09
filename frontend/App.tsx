@@ -67,11 +67,22 @@ const App: React.FC = () => {
     try {
       // Save to backend
       const newEntry = await addScoreToLeaderboard(finalName, finalScore, finalMaxCombo);
-      setLastEntryTimestamp(newEntry.timestamp);
+      setLastEntryTimestamp(newEntry.timestamp || Date.now());
       
       // Reload leaderboard from backend
-      const entries = await getLeaderboard(10);
-      setLeaderboard(entries);
+      try {
+        const entries = await getLeaderboard(10);
+        setLeaderboard(entries);
+      } catch (loadError) {
+        console.error("Failed to reload leaderboard after saving", loadError);
+        // Still update with the new entry we just saved
+        setLeaderboard(prev => {
+          const updated = [...prev, newEntry]
+            .sort((a, b) => b.score - a.score) // Descending
+            .slice(0, 10); // Keep top 10
+          return updated;
+        });
+      }
     } catch (error) {
       console.error("Failed to save score to backend, using localStorage fallback", error);
       // Fallback to localStorage

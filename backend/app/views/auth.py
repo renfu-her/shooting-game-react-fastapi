@@ -17,7 +17,7 @@ async def get_token():
     from app.config import API_TOKEN
     return {
         "token": API_TOKEN,
-        "message": "Use this token in Authorization header as Bearer token"
+        "message": "Use this token in 'token' header for API requests"
     }
 
 

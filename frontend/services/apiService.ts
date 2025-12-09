@@ -31,7 +31,7 @@ export interface LeaderboardResponse {
  */
 function getAuthHeaders(): HeadersInit {
   return {
-    'Authorization': `Bearer ${API_TOKEN}`,
+    'token': API_TOKEN,
     'Content-Type': 'application/json',
   };
 }
@@ -47,11 +47,26 @@ export async function getLeaderboard(limit: number = 10): Promise<LeaderboardEnt
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch leaderboard: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Failed to fetch leaderboard: ${response.status} ${response.statusText}`);
     }
 
     const data: LeaderboardResponse = await response.json();
-    return data.entries || [];
+    // Ensure entries is an array and has the correct structure
+    if (data.entries && Array.isArray(data.entries)) {
+      return data.entries.map(entry => ({
+        name: entry.name || 'Anonymous',
+        score: entry.score || 0,
+        maxCombo: entry.maxCombo || 0,
+        timestamp: entry.timestamp || Date.now()
+      }));
+    }
+    return [];
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     throw error;
@@ -73,18 +88,38 @@ export async function addScoreToLeaderboard(
       maxCombo,
     };
 
+    const headers = getAuthHeaders();
+    
+    // Debug: Log headers (remove in production)
+    console.log('API Request Headers:', {
+      'token': headers['token'] ? '***' : 'MISSING',
+      'Content-Type': headers['Content-Type']
+    });
+
     const response = await fetch(`${API_BASE_URL}/leaderboard`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to add score: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Failed to add score: ${response.status} ${response.statusText}`);
     }
 
     const data: LeaderboardEntry = await response.json();
-    return data;
+    // Ensure the response has all required fields
+    return {
+      name: data.name || 'Anonymous',
+      score: data.score || 0,
+      maxCombo: data.maxCombo || 0,
+      timestamp: data.timestamp || Date.now()
+    };
   } catch (error) {
     console.error('Error adding score to leaderboard:', error);
     throw error;
