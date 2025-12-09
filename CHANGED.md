@@ -1,5 +1,77 @@
 # 變更記錄 (Change Log)
 
+## 2025-12-09 16:10:00
+
+### 修復前端 API 認證 401 錯誤
+
+修復前端調用 API 時出現的 401 (Unauthorized) 錯誤，原因是前端使用硬編碼的 token，可能與後端配置不一致。
+
+#### 更新的檔案
+
+- `frontend/services/apiService.ts`:
+  - 移除硬編碼的 `API_TOKEN` 常量
+  - 實現動態從後端 `/api/auth/token` 端點獲取 token 的機制
+  - 添加 token 緩存機制，避免重複請求
+  - 實現 `getApiTokenInternal()` 函數，自動獲取並緩存 token
+  - 將 `getAuthHeaders()` 改為異步函數，確保使用正確的 token
+  - 更新 `getLeaderboard()` 和 `addScoreToLeaderboard()` 以使用異步的 `getAuthHeaders()`
+  - 添加錯誤處理和 fallback 機制，如果無法從 API 獲取 token，則使用默認值
+
+#### 改進內容
+
+- **動態 Token 獲取**：前端現在會自動從後端 API 獲取正確的 token，確保與後端配置一致
+- **Token 緩存**：實現了 token 緩存機制，避免每次 API 調用都重新獲取 token
+- **錯誤處理**：如果無法從 API 獲取 token，會使用默認值作為 fallback，確保應用仍能運行
+- **更好的調試**：添加了詳細的日誌，方便追蹤 token 獲取過程
+
+#### 問題解決
+
+- 修復了前端調用 `/api/leaderboard` GET 和 POST 端點時出現的 401 錯誤
+- 確保前端使用的 token 與後端 `.env` 文件中配置的 `API_TOKEN` 一致
+
+## 2025-12-09 16:06:44
+
+### 修復前端排行榜無法顯示 API 資料的問題
+
+修復前端 HIGH SCORES 畫面無法顯示從 API 取得的排行榜資料。
+
+#### 更新的檔案
+
+- `frontend/App.tsx`:
+  - 將 `loadLeaderboard` 函數提取出來，使其可以在多個地方調用
+  - 添加新的 `useEffect`，當切換到 `LEADERBOARD` 狀態時自動重新載入排行榜資料
+  - 在 `renderLeaderboardList` 中添加調試日誌，方便追蹤資料載入狀態
+  - 改進 key 的生成方式，使用 `timestamp` 和 `index` 組合確保唯一性
+
+- `frontend/services/apiService.ts`:
+  - 在 `getLeaderboard` 函數中添加詳細的調試日誌
+  - 改進 `timestamp` 的處理邏輯，確保正確轉換為數字類型
+  - 添加更完整的錯誤處理和資料驗證
+
+#### 改進內容
+
+- **自動重新載入**：當用戶點擊 "Leaderboard" 按鈕時，會自動從 API 重新載入最新的排行榜資料
+- **更好的資料處理**：確保 API 返回的資料格式正確轉換為前端需要的格式
+- **調試支援**：添加了詳細的 console.log，方便追蹤資料載入流程
+- **錯誤處理**：改進了錯誤處理邏輯，確保在 API 失敗時有適當的 fallback
+
+## 2025-12-09 16:01:11
+
+### 調整前端籃球位置以改善拖拽體驗
+
+調整籃球初始位置，讓用戶更容易拖拽籃球來控制力量。
+
+#### 更新的檔案
+
+- `frontend/components/ArcadeCanvas.tsx`:
+  - 將籃球初始 Y 位置從 `canvasHeight - 100` 調整為 `canvasHeight - 150`
+  - 籃球往上移動 50 像素，提供更好的拖拽空間
+
+#### 改進內容
+
+- **更好的拖拽體驗**：籃球位置往上移，有更多空間可以向下拖拽來增加力量
+- **視覺改善**：籃球不再太靠近底部，視覺上更平衡
+
 ## 2025-12-09 15:35:29
 
 ### 改進 Swagger UI 中 token 欄位的顯示和說明

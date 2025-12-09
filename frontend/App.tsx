@@ -32,26 +32,28 @@ const App: React.FC = () => {
   // Use 'number' for browser environments, generally safe cast for setInterval ID
   const timerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    // Load leaderboard from backend on mount
-    const loadLeaderboard = async () => {
-      try {
-        const entries = await getLeaderboard(10);
-        setLeaderboard(entries);
-      } catch (error) {
-        console.error("Failed to load leaderboard from backend, using localStorage fallback", error);
-        // Fallback to localStorage
-        const saved = localStorage.getItem(LEADERBOARD_KEY);
-        if (saved) {
-          try {
-            setLeaderboard(JSON.parse(saved));
-          } catch (e) {
-            console.error("Failed to parse leaderboard", e);
-          }
+  // Load leaderboard function
+  const loadLeaderboard = async () => {
+    try {
+      const entries = await getLeaderboard(10);
+      console.log("Loaded leaderboard from API:", entries);
+      setLeaderboard(entries);
+    } catch (error) {
+      console.error("Failed to load leaderboard from backend, using localStorage fallback", error);
+      // Fallback to localStorage
+      const saved = localStorage.getItem(LEADERBOARD_KEY);
+      if (saved) {
+        try {
+          setLeaderboard(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse leaderboard", e);
         }
       }
-    };
-    
+    }
+  };
+
+  useEffect(() => {
+    // Load leaderboard from backend on mount
     loadLeaderboard();
     
     // Load last player name
@@ -60,6 +62,13 @@ const App: React.FC = () => {
       setPlayerName(savedName);
     }
   }, []);
+
+  // Reload leaderboard when switching to LEADERBOARD view
+  useEffect(() => {
+    if (gameState === GameState.LEADERBOARD) {
+      loadLeaderboard();
+    }
+  }, [gameState]);
 
   const saveScoreToLeaderboard = async (finalScore: number, finalMaxCombo: number) => {
     const finalName = playerName.trim() || "Anonymous";
@@ -194,38 +203,41 @@ const App: React.FC = () => {
   }, [gameState]);
 
   // Render Helpers
-  const renderLeaderboardList = () => (
-    <div className="w-full bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden">
-      <div className="grid grid-cols-4 gap-2 bg-slate-800 p-3 text-xs uppercase font-bold text-slate-400 tracking-wider">
-        <div className="col-span-1">Rank</div>
-        <div className="col-span-1">Name</div>
-        <div className="col-span-1 text-right">Combo</div>
-        <div className="col-span-1 text-right">Score</div>
+  const renderLeaderboardList = () => {
+    console.log("Rendering leaderboard, entries count:", leaderboard.length, leaderboard);
+    return (
+      <div className="w-full bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden">
+        <div className="grid grid-cols-4 gap-2 bg-slate-800 p-3 text-xs uppercase font-bold text-slate-400 tracking-wider">
+          <div className="col-span-1">Rank</div>
+          <div className="col-span-1">Name</div>
+          <div className="col-span-1 text-right">Combo</div>
+          <div className="col-span-1 text-right">Score</div>
+        </div>
+        {leaderboard.length === 0 ? (
+          <div className="p-4 text-center text-slate-500 italic">No records yet. Be the first!</div>
+        ) : (
+          leaderboard.map((entry, index) => {
+            const isNew = entry.timestamp === lastEntryTimestamp;
+            return (
+              <div 
+                key={`${entry.timestamp}-${index}`} 
+                className={`grid grid-cols-4 gap-2 p-3 border-b border-slate-800 text-sm items-center ${isNew ? 'bg-yellow-900/20 text-yellow-200 animate-pulse' : 'text-slate-300'}`}
+              >
+                <div className="col-span-1 font-mono font-bold">
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                </div>
+                <div className="col-span-1 truncate font-medium text-white">
+                  {entry.name || 'Anonymous'}
+                </div>
+                <div className="col-span-1 text-right font-mono text-pink-400">{entry.maxCombo || 0}</div>
+                <div className="col-span-1 text-right font-mono font-bold text-cyan-400">{entry.score || 0}</div>
+              </div>
+            );
+          })
+        )}
       </div>
-      {leaderboard.length === 0 ? (
-        <div className="p-4 text-center text-slate-500 italic">No records yet. Be the first!</div>
-      ) : (
-        leaderboard.map((entry, index) => {
-          const isNew = entry.timestamp === lastEntryTimestamp;
-          return (
-            <div 
-              key={entry.timestamp} 
-              className={`grid grid-cols-4 gap-2 p-3 border-b border-slate-800 text-sm items-center ${isNew ? 'bg-yellow-900/20 text-yellow-200 animate-pulse' : 'text-slate-300'}`}
-            >
-              <div className="col-span-1 font-mono font-bold">
-                {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-              </div>
-              <div className="col-span-1 truncate font-medium text-white">
-                {entry.name || 'Anonymous'}
-              </div>
-              <div className="col-span-1 text-right font-mono text-pink-400">{entry.maxCombo}</div>
-              <div className="col-span-1 text-right font-mono font-bold text-cyan-400">{entry.score}</div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     // Outer Container: Handles Desktop Background and centering

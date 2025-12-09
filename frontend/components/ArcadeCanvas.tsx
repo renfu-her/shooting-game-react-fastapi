@@ -68,7 +68,7 @@ const ArcadeCanvas: React.FC<ArcadeCanvasProps> = ({
     ballIdCounterRef.current += 1;
     readyBallRef.current = createBall(
       canvasWidth / 2, 
-      canvasHeight - 100, 
+      canvasHeight - 150, // Moved up from 100 to 150 for better drag experience
       ballIdCounterRef.current
     );
   };
