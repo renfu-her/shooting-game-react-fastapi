@@ -6,40 +6,28 @@ from app.services.auth_service import AuthService
 security = HTTPBearer()
 
 
-async def get_current_user(
+async def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> dict:
-    """Dependency to get current authenticated user from JWT token.
+) -> bool:
+    """Dependency to verify API token.
     
     Args:
         credentials: HTTP Bearer token credentials
         
     Returns:
-        User information dictionary
+        True if token is valid
         
     Raises:
         HTTPException: If token is invalid or missing
     """
     token = credentials.credentials
-    payload = AuthService.verify_token(token)
     
-    if payload is None:
+    if not AuthService.verify_token(token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    email: str = payload.get("sub")
-    if email is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing user information",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return {
-        "email": email,
-        "is_authenticated": True
-    }
+    return True
 

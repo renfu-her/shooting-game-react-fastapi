@@ -18,12 +18,6 @@ MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "shooting-game")
 API_PREFIX = "/api"
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
 
-# JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
-
-# Default User Configuration (for initial setup)
-DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "renfu.her@gmail.com")
-DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@Qwe135#")
+# API Token Configuration
+API_TOKEN = os.getenv("API_TOKEN", "shooting-game-api-token-2024")
 
