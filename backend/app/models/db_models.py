@@ -18,3 +18,4 @@ class LeaderboardEntryDB(Base):
     def __repr__(self):
         return f"<LeaderboardEntryDB(id={self.id}, name='{self.name}', score={self.score})>"
 
+
