@@ -4,9 +4,8 @@
 
 // API configuration - can be set via environment variables or use defaults
 // In Vite, environment variables prefixed with VITE_ are available via import.meta.env
-// For now, we'll use defaults that can be overridden
-const API_BASE_URL = 'http://localhost:8000/api';
-const DEFAULT_API_TOKEN = 'shooting-game-api-token-2024';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const DEFAULT_API_TOKEN = import.meta.env.VITE_API_TOKEN || 'shooting-game-api-token-2024';
 
 // Cache for API token - will be fetched from backend on first use
 let cachedToken: string | null = null;
