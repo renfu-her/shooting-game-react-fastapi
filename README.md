@@ -122,10 +122,24 @@ uv run python init_db.py
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**生產模式：**
+**生產模式（使用 Gunicorn，推薦）：**
+```bash
+# 使用配置文件
+uv run gunicorn app.main:app -c gunicorn_config.py
+
+# 或直接指定參數
+uv run gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000
+```
+
+**生產模式（使用 Uvicorn，簡單部署）：**
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+> **注意**：Gunicorn 是生產環境推薦的 WSGI 伺服器，提供更好的性能和穩定性。詳細配置請參考 `backend/README.md`。
 
 後端服務將運行在：**http://localhost:8000**
 

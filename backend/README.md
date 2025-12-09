@@ -70,14 +70,57 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 
 ### 開發模式
 
+使用 uvicorn（支援熱重載）：
+
 ```bash
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 生產模式
 
+#### 使用 Gunicorn（推薦）
+
+Gunicorn 是一個生產級的 WSGI HTTP 伺服器，適合部署到生產環境：
+
+```bash
+# 使用配置文件
+uv run gunicorn app.main:app -c gunicorn_config.py
+
+# 或直接指定參數
+uv run gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 30 \
+    --access-logfile - \
+    --error-logfile -
+```
+
+#### 使用 Uvicorn（簡單部署）
+
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+#### Gunicorn 配置說明
+
+配置文件 `gunicorn_config.py` 支援以下環境變數：
+
+- `GUNICORN_BIND`: 綁定地址和端口（預設: `0.0.0.0:8000`）
+- `GUNICORN_WORKERS`: Worker 進程數量（預設: CPU 核心數 × 2 + 1）
+- `GUNICORN_ACCESS_LOG`: 訪問日誌路徑（預設: stdout，使用 `-` 表示）
+- `GUNICORN_ERROR_LOG`: 錯誤日誌路徑（預設: stderr，使用 `-` 表示）
+- `GUNICORN_LOG_LEVEL`: 日誌級別（預設: `info`）
+
+範例：
+
+```bash
+# 使用自定義配置
+export GUNICORN_WORKERS=8
+export GUNICORN_BIND=0.0.0.0:8080
+export GUNICORN_ACCESS_LOG=/var/log/shooting-game/access.log
+export GUNICORN_ERROR_LOG=/var/log/shooting-game/error.log
+uv run gunicorn app.main:app -c gunicorn_config.py
 ```
 
 API 文件可在以下位置查看：
@@ -124,7 +167,8 @@ backend/
 ## 開發工具
 
 - **FastAPI**: Web 框架
-- **uvicorn**: ASGI 伺服器
+- **uvicorn**: ASGI 伺服器（開發用）
+- **gunicorn**: WSGI HTTP 伺服器（生產用）
 - **SQLAlchemy**: ORM 框架
 - **PyMySQL**: MySQL 驅動程式
 - **uv**: Python 套件管理器

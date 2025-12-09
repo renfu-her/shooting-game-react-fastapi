@@ -1,5 +1,52 @@
 # 變更記錄 (Change Log)
 
+## 2025-12-09 16:25:00
+
+### 後端添加 Gunicorn 支援
+
+在後端添加 Gunicorn 支援，提供生產環境部署選項。
+
+#### 更新的檔案
+
+- `backend/pyproject.toml`:
+  - 添加 `gunicorn>=21.2.0` 依賴
+
+- `backend/gunicorn_config.py` (新建):
+  - 創建 Gunicorn 配置文件
+  - 支援環境變數配置（workers、bind、日誌等）
+  - 使用 `uvicorn.workers.UvicornWorker` 作為 worker class
+  - 預設 worker 數量為 CPU 核心數 × 2 + 1
+
+- `backend/README.md`:
+  - 添加 Gunicorn 使用說明
+  - 說明開發模式和生產模式的差異
+  - 添加環境變數配置說明
+  - 更新開發工具列表
+
+- `README.md` (根目錄):
+  - 在後端設定部分添加 Gunicorn 啟動說明
+  - 說明 Gunicorn 和 Uvicorn 的差異
+
+#### 改進內容
+
+- **生產環境支援**：提供 Gunicorn 作為生產環境的 WSGI 伺服器選項
+- **配置靈活性**：支援通過環境變數自定義配置
+- **更好的性能**：Gunicorn 提供多進程支援，適合生產環境
+- **文檔完善**：添加詳細的使用說明和配置選項
+
+#### 使用方式
+
+```bash
+# 使用配置文件
+uv run gunicorn app.main:app -c gunicorn_config.py
+
+# 或直接指定參數
+uv run gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000
+```
+
 ## 2025-12-09 16:20:00
 
 ### 修復遊戲結束時分數為 0 和重複寫入的問題
