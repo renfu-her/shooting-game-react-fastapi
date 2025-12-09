@@ -1,5 +1,84 @@
 # 變更記錄 (Change Log)
 
+## 2025-12-09 14:44:37
+
+### 簡化認證系統為固定 Token 並整合前端 API
+
+將認證系統從 JWT + users 表簡化為固定 token 驗證，並讓前端可以調用後端 API 寫入排行榜。
+
+#### 後端變更
+
+**移除的檔案**：
+- `app/services/user_service.py` - 用戶資料庫服務
+- `app/controllers/auth_controller.py` - 認證控制器
+- `app/models/user.py` - 用戶 Pydantic 模型
+
+**更新的檔案**：
+- `app/config.py`: 
+  - 移除 JWT 和用戶相關配置
+  - 新增 `API_TOKEN` 配置（預設：`shooting-game-api-token-2024`）
+- `app/services/auth_service.py`: 
+  - 簡化為固定 token 驗證
+  - 移除 JWT、密碼雜湊等複雜邏輯
+  - 只保留 `verify_token()` 方法
+- `app/utils/auth_dependency.py`: 
+  - 簡化為 `verify_token()` 依賴
+  - 移除用戶資訊返回
+- `app/views/auth.py`: 
+  - 移除登入端點
+  - 新增 `/api/auth/token` 端點（獲取 API token）
+  - 新增 `/api/auth/verify` 端點（驗證 token，不需要認證）
+- `app/views/leaderboard.py`: 
+  - 更新認證依賴為 `verify_token`
+- `app/models/db_models.py`: 
+  - 移除 `UserDB` 模型
+- `app/database.py`: 
+  - 移除用戶創建邏輯
+- `init_db.py`: 
+  - 移除用戶初始化邏輯
+- `pyproject.toml`: 
+  - 移除 `python-jose[cryptography]` 和 `passlib[bcrypt]` 依賴
+
+#### 前端變更
+
+**新增的檔案**：
+- `services/apiService.ts` - 後端 API 服務
+  - `getLeaderboard()` - 獲取排行榜
+  - `addScoreToLeaderboard()` - 新增分數
+  - `getApiToken()` - 獲取 API token
+
+**更新的檔案**：
+- `App.tsx`: 
+  - 整合後端 API 服務
+  - 更新 `useEffect` 從後端載入排行榜
+  - 更新 `saveScoreToLeaderboard()` 使用後端 API
+  - 保留 localStorage 作為 fallback
+- `vite.config.ts`: 
+  - 移除不必要的環境變數定義
+
+#### 認證機制
+
+- **固定 Token**: `shooting-game-api-token-2024`（可透過環境變數 `API_TOKEN` 設定）
+- **Token 使用方式**: 在 HTTP Header 中使用 `Authorization: Bearer {token}`
+- **API 端點**:
+  - `GET /api/auth/token` - 獲取 API token（不需要認證）
+  - `GET /api/auth/verify?token=xxx` - 驗證 token（不需要認證）
+  - `GET /api/leaderboard` - 獲取排行榜（需要認證）
+  - `POST /api/leaderboard` - 新增分數（需要認證）
+
+#### 前端 API 整合
+
+- 前端預設使用 `http://localhost:8000/api` 作為後端 API 基礎 URL
+- 前端預設使用 `shooting-game-api-token-2024` 作為認證 token
+- 所有 API 請求都會自動帶上 `Authorization: Bearer {token}` header
+- 如果後端 API 失敗，會自動 fallback 到 localStorage
+
+#### 注意事項
+
+- 所有需要認證的 API 都必須在 Header 中帶上有效的 token
+- Token 驗證失敗會返回 401 Unauthorized
+- 前端會自動處理 API 錯誤並 fallback 到 localStorage
+
 ## 2025-12-09 12:17:19
 
 ### 實作 JWT 認證系統並將用戶資料存入資料庫

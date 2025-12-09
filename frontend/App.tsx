@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ArcadeCanvas from './components/ArcadeCanvas';
 import { GameState, GameStats, LeaderboardEntry } from './types';
 import { generateCoachCommentary } from './services/geminiService';
+import { getLeaderboard, addScoreToLeaderboard } from './services/apiService';
 
 const GAME_DURATION = 180; // 3 minutes
 const LEADERBOARD_KEY = 'neon-hoops-leaderboard';
@@ -32,15 +33,26 @@ const App: React.FC = () => {
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Load leaderboard on mount
-    const saved = localStorage.getItem(LEADERBOARD_KEY);
-    if (saved) {
+    // Load leaderboard from backend on mount
+    const loadLeaderboard = async () => {
       try {
-        setLeaderboard(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse leaderboard", e);
+        const entries = await getLeaderboard(10);
+        setLeaderboard(entries);
+      } catch (error) {
+        console.error("Failed to load leaderboard from backend, using localStorage fallback", error);
+        // Fallback to localStorage
+        const saved = localStorage.getItem(LEADERBOARD_KEY);
+        if (saved) {
+          try {
+            setLeaderboard(JSON.parse(saved));
+          } catch (e) {
+            console.error("Failed to parse leaderboard", e);
+          }
+        }
       }
-    }
+    };
+    
+    loadLeaderboard();
     
     // Load last player name
     const savedName = localStorage.getItem(PLAYER_NAME_KEY);
@@ -49,25 +61,37 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const saveScoreToLeaderboard = (finalScore: number, finalMaxCombo: number) => {
+  const saveScoreToLeaderboard = async (finalScore: number, finalMaxCombo: number) => {
     const finalName = playerName.trim() || "Anonymous";
     
-    const newEntry: LeaderboardEntry = {
-      name: finalName,
-      score: finalScore,
-      maxCombo: finalMaxCombo,
-      timestamp: Date.now()
-    };
-    setLastEntryTimestamp(newEntry.timestamp);
-
-    setLeaderboard(prev => {
-      const updated = [...prev, newEntry]
-        .sort((a, b) => b.score - a.score) // Descending
-        .slice(0, 10); // Keep top 10
+    try {
+      // Save to backend
+      const newEntry = await addScoreToLeaderboard(finalName, finalScore, finalMaxCombo);
+      setLastEntryTimestamp(newEntry.timestamp);
       
-      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
-      return updated;
-    });
+      // Reload leaderboard from backend
+      const entries = await getLeaderboard(10);
+      setLeaderboard(entries);
+    } catch (error) {
+      console.error("Failed to save score to backend, using localStorage fallback", error);
+      // Fallback to localStorage
+      const newEntry: LeaderboardEntry = {
+        name: finalName,
+        score: finalScore,
+        maxCombo: finalMaxCombo,
+        timestamp: Date.now()
+      };
+      setLastEntryTimestamp(newEntry.timestamp);
+
+      setLeaderboard(prev => {
+        const updated = [...prev, newEntry]
+          .sort((a, b) => b.score - a.score) // Descending
+          .slice(0, 10); // Keep top 10
+        
+        localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
   };
 
   const startGame = () => {
@@ -107,8 +131,8 @@ const App: React.FC = () => {
     setGameState(GameState.GAME_OVER);
     if (timerRef.current) clearInterval(timerRef.current);
 
-    // Save Score
-    saveScoreToLeaderboard(score, maxCombo);
+    // Save Score (async)
+    await saveScoreToLeaderboard(score, maxCombo);
 
     setLoadingCommentary(true);
     const stats: GameStats = {
